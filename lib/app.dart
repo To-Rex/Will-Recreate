@@ -1,0 +1,29 @@
+class AppRoutes {
+  static const splash = '/splash';
+  static const onboarding = '/';
+  static const home = '/home';
+  static const login = '/login';
+  static const userInfo = '/auth/user-info';
+  static const phoneRegister = '/auth/phone';
+  static const phoneLogin = '/auth/login-phone';
+  static const otp = '/auth/otp';
+  static const search = '/search';
+  static const filter = '/filter';
+  static const calendar = '/calendar';
+  static const guests = '/guests';
+  static const listingDetail = '/listing-detail';
+  static const favorites = '/favorites';
+  static const reviews = '/reviews';
+  static const settings = '/settings';
+  static const language = '/settings/language';
+  static const paymentMethods = '/payment-methods';
+  static const addCard = '/payment-methods/add-card';
+  static const bookingCalendar = '/booking/calendar';
+  static const bookingConfirmation = '/booking/confirmation';
+  static const activeBookings = '/active-bookings';
+  static const clientBookingDetail = '/client-booking-detail';
+  static const history = '/history';
+  static const support = '/support';
+  static const sanatoriumRooms = '/sanatorium-rooms';
+  static const storyViewer = '/story-viewer';
+}

@@ -1,0 +1,51 @@
+name: weel_app
+description: "Weel Booking - Find, choose, book. Simple and reliable."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  get: ^4.6.6
+  flutter_svg: ^2.2.0
+  flutter_screenutil: ^5.9.3
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  lottie: ^3.3.2
+  url_launcher: ^6.3.2
+  intl: ^0.19.0
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/onboarding/
+    - assets/images/
+    - assets/logo/
+    - assets/icons/
+    - assets/lottie/
+    - assets/lottie/images/
+  fonts:
+    - family: Golos
+      fonts:
+        - asset: assets/fonts/GolosText-Regular.ttf
+        - asset: assets/fonts/GolosText-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/GolosText-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/GolosText-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/GolosText-Black.ttf
+          weight: 900
+        - asset: assets/fonts/GolosText-ExtraBold.ttf
+          weight: 800
