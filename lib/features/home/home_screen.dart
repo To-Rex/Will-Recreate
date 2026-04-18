@@ -272,33 +272,40 @@ class HomeScreen extends GetView<HomeController> {
   }
 
   Widget _buildHomeShimmer() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          children: [
+            const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+            const SizedBox(height: 16),
+            ...List.generate(3, (_) => _buildShimmerItem()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerItem() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-          const SizedBox(height: 16),
-          _buildPropertyListShimmer(),
+          const AnimatedShimmerBox(height: 250, borderRadius: 20),
+          const SizedBox(height: 12),
+          AnimatedShimmerBox(width: 200.w, height: 18, borderRadius: 4),
+          const SizedBox(height: 8),
+          AnimatedShimmerBox(width: 150.w, height: 14, borderRadius: 4),
         ],
       ),
     );
   }
 
   Widget _buildPropertyListShimmer() {
-    return Column(
-      children: List.generate(3, (index) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const AnimatedShimmerBox(height: 250, borderRadius: 20),
-            const SizedBox(height: 12),
-            AnimatedShimmerBox(width: 200.w, height: 18, borderRadius: 4),
-            const SizedBox(height: 8),
-            AnimatedShimmerBox(width: 150.w, height: 14, borderRadius: 4),
-          ],
-        ),
-      )),
+    return ListView.builder(
+      itemCount: 3,
+      itemBuilder: (context, index) => _buildShimmerItem(),
     );
   }
 }

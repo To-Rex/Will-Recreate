@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/shimmer_loading.dart';
 import '../../data/models/property_model.dart';
-import '../../data/mock/mock_data.dart';
+import '../../data/repositories/favorites_repository.dart';
 import '../../app.dart';
 
 // Controller
@@ -13,6 +13,7 @@ class FavoritesController extends GetxController {
   final _isLoading = true.obs;
   final _hasError = false.obs;
   final favorites = <Property>[].obs;
+  final _repository = FavoritesRepository();
 
   bool get isLoading => _isLoading.value;
   bool get hasError => _hasError.value;
@@ -27,18 +28,17 @@ class FavoritesController extends GetxController {
     _isLoading.value = true;
     _hasError.value = false;
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(milliseconds: 800));
-      // Mock some favorites
-      favorites.value = [
-        MockData.properties[0],
-        MockData.properties[2],
-      ];
-      _isLoading.value = false;
+      favorites.value = await _repository.getFavorites();
     } catch (e) {
       _hasError.value = true;
-      _isLoading.value = false;
     }
+    _isLoading.value = false;
+  }
+
+  /// Sevimlidan o'chirish
+  Future<void> removeFavorite(String guid) async {
+    await _repository.removeFavorite(guid);
+    favorites.removeWhere((p) => p.guid == guid);
   }
 
   bool isFavorite(String guid) {

@@ -453,7 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: OutlinedButton(
                         onPressed: () {
                           Navigator.of(ctx).pop();
-                          controller.appController.logout();
+                          controller.appController.deleteAccount();
                         },
                         style: OutlinedButton.styleFrom(
                           padding: EdgeInsets.symmetric(vertical: 16.h),

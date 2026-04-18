@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/property_model.dart';
-import '../../data/mock/mock_data.dart';
+import '../../data/repositories/booking_repository.dart';
 import '../../app.dart';
 
 // Calendar Screen
@@ -217,66 +217,129 @@ class BookingCalendarScreen extends StatelessWidget {
   }
 }
 
+// Active Bookings Controller
+class ActiveBookingsController extends GetxController {
+  final bookings = <ClientBooking>[].obs;
+  final isLoading = true.obs;
+  final errorMessage = Rx<String?>(null);
+  final _bookingRepository = BookingRepository();
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadBookings();
+  }
+
+  Future<void> loadBookings() async {
+    isLoading.value = true;
+    errorMessage.value = null;
+    final result = await _bookingRepository.getClientBookings();
+    result.when(
+      success: (data) => bookings.value = data,
+      failure: (msg) => errorMessage.value = msg,
+    );
+    isLoading.value = false;
+  }
+
+  Future<void> cancelBooking(String bookingId) async {
+    final result = await _bookingRepository.cancelBooking(bookingId);
+    result.when(
+      success: (_) {
+        bookings.removeWhere((b) => b.guid == bookingId);
+      },
+      failure: (_) {},
+    );
+  }
+}
+
 // Active Bookings Screen
 class ActiveBookingsScreen extends StatelessWidget {
   const ActiveBookingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final bookings = MockData.bookings;
+    // Repository orqali bookinglarni yuklash
+    final controller = Get.put(ActiveBookingsController());
     return Scaffold(
       appBar: AppBar(title: Text('active_bookings_title'.tr)),
-      body: bookings.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.calendar_today, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text('no_active_bookings'.tr, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  Text('active_bookings_description'.tr, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: bookings.length,
-              itemBuilder: (context, index) {
-                final booking = bookings[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: InkWell(
-                    onTap: () => Get.toNamed(AppRoutes.clientBookingDetail, arguments: {'booking': booking}),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        if (controller.errorMessage.value != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(controller.errorMessage.value ?? 'error_default'.tr),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => controller.loadBookings(),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  child: Text('retry'.tr, style: const TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        }
+        final bookings = controller.bookings;
+        return bookings.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.calendar_today, size: 64, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text('no_active_bookings'.tr, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text('active_bookings_description'.tr, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: () => controller.loadBookings(),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: bookings.length,
+                  itemBuilder: (context, index) {
+                    final booking = bookings[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: InkWell(
+                        onTap: () => Get.toNamed(AppRoutes.clientBookingDetail, arguments: {'booking': booking}),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(child: Text(booking.property.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16))),
-                              _buildStatusBadge(booking.status),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(child: Text(booking.property.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16))),
+                                  _buildStatusBadge(booking.status),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text('${'booking_number_label'.tr}: ${booking.bookingNumber}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+                              const SizedBox(height: 4),
+                              Text('${'dates_label'.tr}: ${booking.checkIn?.toString().substring(0, 10) ?? ''} - ${booking.checkOut?.toString().substring(0, 10) ?? ''}'),
+                              if (booking.totalPrice != null) ...[
+                                const SizedBox(height: 4),
+                                Text('${booking.totalPrice!.toInt()} so\'m', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                              ],
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Text('${'booking_number_label'.tr}: ${booking.bookingNumber}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
-                          const SizedBox(height: 4),
-                          Text('${'dates_label'.tr}: ${booking.checkIn?.toString().substring(0, 10) ?? ''} - ${booking.checkOut?.toString().substring(0, 10) ?? ''}'),
-                          if (booking.totalPrice != null) ...[
-                            const SizedBox(height: 4),
-                            Text('${booking.totalPrice!.toInt()} so\'m', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
-                          ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+              );
+      }),
     );
   }
 
@@ -346,7 +409,12 @@ class ClientBookingDetailScreen extends StatelessWidget {
                     middleText: 'Are you sure?',
                     textConfirm: 'yes'.tr,
                     textCancel: 'no'.tr,
-                    onConfirm: () => Get.back(),
+                    onConfirm: () async {
+                      Get.back(); // dialogni yopish
+                      final repo = BookingRepository();
+                      await repo.cancelBooking(booking.guid);
+                      Get.back(result: true); // detail screendan chiqish
+                    },
                   );
                 },
                 style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),

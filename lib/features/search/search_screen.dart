@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
+import '../../data/models/property_model.dart';
+import '../../data/repositories/property_repository.dart';
 import '../../data/mock/mock_data.dart' show MockData;
 
 class SearchScreen extends StatefulWidget {
@@ -25,6 +27,8 @@ class _SearchScreenState extends State<SearchScreen>
   Timer? _debounce;
   final _searchQuery = ''.obs;
   final _isSearching = false.obs;
+  final _searchResults = <Property>[].obs;
+  final _propertyRepository = PropertyRepository();
 
   @override
   void initState() {
@@ -48,6 +52,21 @@ class _SearchScreenState extends State<SearchScreen>
     return _selectedWhen != null &&
         _selectedWhen != 'search_week'.tr &&
         _selectedWhen != 'search_not_selected'.tr;
+  }
+
+  /// API orqali qidirish
+  Future<void> _performSearch(String query) async {
+    final result = await _propertyRepository.getProperties(search: query);
+    result.when(
+      success: (properties) {
+        _searchResults.value = properties;
+        _isSearching.value = false;
+      },
+      failure: (_) {
+        _searchResults.clear();
+        _isSearching.value = false;
+      },
+    );
   }
 
   @override
@@ -183,6 +202,7 @@ class _SearchScreenState extends State<SearchScreen>
                           _searchController.clear();
                           _searchQuery.value = '';
                           _isSearching.value = false;
+                          _searchResults.clear();
                           setState(() {});
                         },
                       )
@@ -200,7 +220,8 @@ class _SearchScreenState extends State<SearchScreen>
                 if (value.length > 2) {
                   _debounce = Timer(const Duration(milliseconds: 500), () {
                     _searchQuery.value = value;
-                    _isSearching.value = false;
+                    _isSearching.value = true;
+                    _performSearch(value);
                   });
                 }
 
@@ -239,24 +260,18 @@ class _SearchScreenState extends State<SearchScreen>
                   return Center(child: _buildSearchingAnimation(context));
                 }
 
-                final query = _searchQuery.value.toLowerCase();
-                final results = MockData.properties.where((p) {
-                  return p.title.toLowerCase().contains(query) ||
-                      p.location.city.toLowerCase().contains(query);
-                }).toList();
-
-                if (results.isEmpty) {
+                if (_searchResults.isEmpty) {
                   return Center(child: _buildNoResultsSection(context, isDark));
                 }
                 return ListView.builder(
                   padding: EdgeInsets.zero,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: results.length,
+                  itemCount: _searchResults.length,
                   itemBuilder: (context, index) {
                     return _buildHorizontalPropertyCard(
                       context,
                       isDark,
-                      results[index],
+                      _searchResults[index],
                     );
                   },
                 );
@@ -391,6 +406,8 @@ class _SearchScreenState extends State<SearchScreen>
                     _searchController.text = dest['title'] as String;
                     setState(() {});
                     _searchQuery.value = dest['title'] as String;
+                    _isSearching.value = true;
+                    _performSearch(dest['title'] as String);
                   },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

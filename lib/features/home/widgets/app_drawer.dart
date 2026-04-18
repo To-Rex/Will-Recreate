@@ -168,6 +168,11 @@ class AppDrawer extends StatelessWidget {
       return const SizedBox(height: 20);
     }
 
+    // User ma'lumotlari AppController dan olinadi
+    final userName = ctrl.userFullName ?? '';
+    final userPhone = ctrl.userPhone ?? '';
+    final initials = userName.isNotEmpty ? userName[0].toUpperCase() : 'U';
+
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
@@ -216,7 +221,7 @@ class AppDrawer extends StatelessWidget {
               radius: 24,
               backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
               child: Text(
-                'U',
+                initials,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -231,7 +236,7 @@ class AppDrawer extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'User Name',
+                  userName.isNotEmpty ? userName : 'User',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -240,7 +245,7 @@ class AppDrawer extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '+998 90 123 45 67',
+                  userPhone.isNotEmpty ? userPhone : '',
                   style: TextStyle(
                     fontSize: 14,
                     color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade600,

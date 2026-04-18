@@ -3,16 +3,18 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/mock/mock_data.dart';
+import '../../data/models/property_model.dart';
+import '../../data/repositories/payment_repository.dart';
 import '../../app.dart';
 
 // ===================== Controller =====================
 
 class PaymentController extends GetxController {
-  final cards = MockData.cards.obs;
+  final cards = <CardModel>[].obs;
   final selectedCardId = Rx<String?>(null);
   final isEditing = false.obs;
   final isLoading = false.obs;
+  final _paymentRepository = PaymentRepository();
 
   @override
   void onInit() {
@@ -22,11 +24,16 @@ class PaymentController extends GetxController {
 
   Future<void> loadCards() async {
     isLoading.value = true;
-    await Future.delayed(const Duration(milliseconds: 800));
-    cards.value = MockData.cards;
-    if (cards.isNotEmpty && selectedCardId.value == null) {
-      selectedCardId.value = cards.first.guid;
-    }
+    final result = await _paymentRepository.getCards();
+    result.when(
+      success: (data) {
+        cards.value = data;
+        if (cards.isNotEmpty && selectedCardId.value == null) {
+          selectedCardId.value = cards.first.guid;
+        }
+      },
+      failure: (_) {},
+    );
     isLoading.value = false;
   }
 
@@ -38,12 +45,19 @@ class PaymentController extends GetxController {
     isEditing.value = !isEditing.value;
   }
 
-  void deleteCard(int index) {
-    final deletedGuid = cards[index].guid;
-    cards.removeAt(index);
-    if (selectedCardId.value == deletedGuid) {
-      selectedCardId.value = cards.isNotEmpty ? cards.first.guid : null;
-    }
+  /// Kartani API orqali o'chirish
+  Future<void> deleteCard(int index) async {
+    final card = cards[index];
+    final result = await _paymentRepository.deleteCard(card.id);
+    result.when(
+      success: (_) {
+        cards.removeAt(index);
+        if (selectedCardId.value == card.guid) {
+          selectedCardId.value = cards.isNotEmpty ? cards.first.guid : null;
+        }
+      },
+      failure: (_) {},
+    );
   }
 }
 
@@ -401,9 +415,9 @@ class PaymentMethodsScreen extends GetView<PaymentController> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        controller.deleteCard(index);
-                        Navigator.of(ctx).pop();
+                      onPressed: () async {
+                        await controller.deleteCard(index);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),

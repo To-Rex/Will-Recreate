@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/property_model.dart';
-import '../../data/mock/mock_data.dart';
+import '../../data/repositories/booking_repository.dart';
 import '../../app.dart';
 
 // ===================== Controller =====================
@@ -15,6 +15,7 @@ class BookingHistoryController extends GetxController {
   final groupedBookings = <DateTime, List<BookingHistoryModel>>{}.obs;
   final isLoading = true.obs;
   final errorMessage = Rx<String?>(null);
+  final _bookingRepository = BookingRepository();
 
   @override
   void onInit() {
@@ -25,22 +26,26 @@ class BookingHistoryController extends GetxController {
   Future<void> loadBookings() async {
     isLoading.value = true;
     errorMessage.value = null;
-    await Future.delayed(const Duration(milliseconds: 800));
     try {
-      final bookings = MockData.bookingHistory;
-      final grouped = <DateTime, List<BookingHistoryModel>>{};
-      for (var booking in bookings) {
-        final date = DateTime(
-          booking.createdAt.year,
-          booking.createdAt.month,
-          booking.createdAt.day,
-        );
-        if (!grouped.containsKey(date)) {
-          grouped[date] = [];
-        }
-        grouped[date]!.add(booking);
-      }
-      groupedBookings.value = grouped;
+      final result = await _bookingRepository.getBookingHistory();
+      result.when(
+        success: (bookings) {
+          final grouped = <DateTime, List<BookingHistoryModel>>{};
+          for (var booking in bookings) {
+            final date = DateTime(
+              booking.createdAt.year,
+              booking.createdAt.month,
+              booking.createdAt.day,
+            );
+            if (!grouped.containsKey(date)) {
+              grouped[date] = [];
+            }
+            grouped[date]!.add(booking);
+          }
+          groupedBookings.value = grouped;
+        },
+        failure: (msg) => errorMessage.value = msg,
+      );
     } catch (e) {
       errorMessage.value = e.toString();
     }
@@ -51,12 +56,13 @@ class BookingHistoryController extends GetxController {
     await loadBookings();
   }
 
-  BookingHistoryModel? getBookingDetail(String bookingId) {
-    try {
-      return MockData.bookingHistory.firstWhere((b) => b.guid == bookingId);
-    } catch (_) {
-      return null;
-    }
+  /// Booking detailni API dan olish
+  Future<BookingHistoryModel?> getBookingDetail(String bookingId) async {
+    final result = await _bookingRepository.getBookingHistoryDetail(bookingId);
+    return result.when(
+      success: (data) => data,
+      failure: (_) => null,
+    );
   }
 }
 
@@ -446,10 +452,9 @@ class _BookingDetailBottomSheetState extends State<_BookingDetailBottomSheet> {
   }
 
   Future<void> _fetchDetails() async {
-    await Future.delayed(const Duration(milliseconds: 600));
     final controller = Get.find<BookingHistoryController>();
     final detailedBooking =
-        controller.getBookingDetail(widget.booking.guid);
+        await controller.getBookingDetail(widget.booking.guid);
 
     if (mounted && detailedBooking != null) {
       setState(() {

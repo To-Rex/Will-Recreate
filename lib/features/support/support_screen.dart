@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../core/config/app_config.dart';
+import '../../core/storage/secure_storage_service.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/mock/mock_data.dart';
+import '../../data/repositories/support_repository.dart';
+import '../../data/services/support_websocket_service.dart';
 
 // Message status enum matching reference project
 enum MessageStatus { sending, sent, read, failed }
@@ -33,7 +37,15 @@ class SupportController extends GetxController {
   final focusNode = FocusNode();
   final isLoading = true.obs;
   final isPartnerTyping = false.obs;
-  final isConnected = true.obs;
+  final isConnected = false.obs;
+  final _supportRepository = SupportRepository();
+  final _storage = SecureStorageService();
+  int? _recipientId;
+  String? _recipientRole;
+  SupportWebSocketService? _webSocketService;
+  String? _currentToken;
+  Timer? _typingTimer;
+  Timer? _typingStopTimer;
 
   @override
   void onInit() {
@@ -41,27 +53,186 @@ class SupportController extends GetxController {
     _initChat();
   }
 
-  void _initChat() {
-    // Simulate loading delay like reference project
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      final chatMsgs = MockData.chatMessages;
-      for (final m in chatMsgs) {
-        messages.add(SupportMessage(
-          id: m.id,
-          content: m.text,
-          isFromMe: m.isMe,
-          createdAt: m.time,
-          status: MessageStatus.sent,
-        ));
+  Future<void> _initChat() async {
+    // Recipient (admin) ni olish
+    final recipientResult = await _supportRepository.getRecipient('admin');
+    int? adminId;
+    String? adminRole;
+    recipientResult.when(
+      success: (data) {
+        if (data != null && data.containsKey('id')) {
+          adminId = data['id'] as int;
+          adminRole = data['role'] as String? ?? 'admin';
+        }
+      },
+      failure: (_) {},
+    );
+
+    // Agar recipient topilsa, xabarlarni yuklash
+    if (adminId != null) {
+      _recipientId = adminId;
+      _recipientRole = adminRole;
+      final messagesResult = await _supportRepository.getMessages(adminId!);
+      messagesResult.when(
+        success: (chatMessages) {
+          for (final m in chatMessages) {
+            messages.add(SupportMessage(
+              id: m.id,
+              content: m.text,
+              isFromMe: m.isMe,
+              createdAt: m.time,
+              status: MessageStatus.sent,
+            ));
+          }
+        },
+        failure: (_) {},
+      );
+    }
+    isLoading.value = false;
+    _scrollToBottom();
+
+    // WebSocket ulanish
+    await _connectWebSocket();
+  }
+
+  Future<void> _connectWebSocket() async {
+    final tokens = await _storage.getTokens();
+    final token = tokens['access_token'];
+    if (token == null || token.isEmpty) return;
+
+    if (_currentToken == token && _webSocketService?.isConnected == true) {
+      return;
+    }
+
+    _currentToken = token;
+    _webSocketService?.disconnect();
+
+    _webSocketService = SupportWebSocketService(
+      baseUrl: AppConfig.wsUrl,
+    );
+
+    _webSocketService!.onConnectionChange = (connected) {
+      isConnected.value = connected;
+      if (connected) {
+        _resendPendingMessages();
       }
-      isLoading.value = false;
-      _scrollToBottom();
-    });
+    };
+
+    _webSocketService!.onMessage = (json) {
+      _handleWebSocketMessage(json);
+    };
+
+    _webSocketService!.connect(token);
+  }
+
+  void _handleWebSocketMessage(Map<String, dynamic> json) {
+    final type = json['type'] as String?;
+    final data = json['data'] as Map<String, dynamic>?;
+
+    switch (type) {
+      case 'message':
+        if (data != null) {
+          final msgId = (data['id'] ?? DateTime.now().millisecondsSinceEpoch).toString();
+          final content = data['content'] as String? ?? '';
+          final senderType = data['sender_type'] as String? ?? '';
+          final isFromMe = senderType == 'client';
+          final createdAt = data['created_at'] != null
+              ? DateTime.tryParse(data['created_at'].toString()) ?? DateTime.now()
+              : DateTime.now();
+
+          if (isFromMe) {
+            // Jo'natilgan xabar tasdiqlandi
+            _confirmPendingMessage(msgId, content);
+          } else {
+            // Yangi xabar keldi
+            messages.add(SupportMessage(
+              id: msgId,
+              content: content,
+              isFromMe: false,
+              createdAt: createdAt,
+              status: MessageStatus.sent,
+            ));
+            _scrollToBottom(animate: true);
+            // Avtomatik read receipt yuborish
+            _sendReadReceipt(int.tryParse(msgId) ?? 0);
+          }
+        }
+        break;
+      case 'read':
+        // Xabarlar o'qilgan deb belgilandi
+        if (data != null) {
+          _markMessagesAsRead();
+        }
+        break;
+      case 'typing':
+        if (data != null) {
+          final isTyping = data['isTyping'] as bool? ?? false;
+          isPartnerTyping.value = isTyping;
+        }
+        break;
+      case 'error':
+        debugPrint('WebSocket error: $data');
+        break;
+    }
+  }
+
+  void _confirmPendingMessage(String confirmedId, String content) {
+    final index = messages.indexWhere(
+      (m) => m.status == MessageStatus.sending && m.isFromMe && m.content == content,
+    );
+    if (index != -1) {
+      messages[index] = SupportMessage(
+        id: confirmedId,
+        content: content,
+        isFromMe: true,
+        createdAt: messages[index].createdAt,
+        status: MessageStatus.sent,
+      );
+    }
+  }
+
+  void _markMessagesAsRead() {
+    for (int i = 0; i < messages.length; i++) {
+      if (messages[i].isFromMe && messages[i].status != MessageStatus.read) {
+        messages[i] = SupportMessage(
+          id: messages[i].id,
+          content: messages[i].content,
+          isFromMe: true,
+          createdAt: messages[i].createdAt,
+          status: MessageStatus.read,
+        );
+      }
+    }
+  }
+
+  void _sendReadReceipt(int messageId) {
+    if (_recipientId == null || _recipientRole == null) return;
+    _webSocketService?.sendReadReceipt(
+      partnerId: _recipientId!,
+      partnerType: _recipientRole!,
+      messageIds: [messageId],
+    );
+  }
+
+  void _resendPendingMessages() {
+    final pending = messages.where(
+      (m) => (m.status == MessageStatus.sending || m.status == MessageStatus.failed) && m.isFromMe,
+    );
+    for (final message in pending) {
+      if (_recipientId != null && _recipientRole != null) {
+        _webSocketService?.sendMessage(
+          receiverId: _recipientId!,
+          receiverType: _recipientRole!,
+          content: message.content,
+        );
+      }
+    }
   }
 
   void sendMessage() {
     final content = textController.text.trim();
     if (content.isEmpty) return;
+    if (_recipientId == null || _recipientRole == null) return;
 
     final tempMessage = SupportMessage(
       id: 'msg-${DateTime.now().millisecondsSinceEpoch}',
@@ -75,36 +246,50 @@ class SupportController extends GetxController {
     textController.clear();
     _scrollToBottom(animate: true);
 
-    // Simulate sending confirmation
-    Future.delayed(const Duration(milliseconds: 500), () {
-      final index = messages.indexWhere((m) => m.id == tempMessage.id);
-      if (index != -1) {
-        messages[index] = SupportMessage(
-          id: tempMessage.id,
-          content: tempMessage.content,
-          isFromMe: true,
-          createdAt: tempMessage.createdAt,
-          status: MessageStatus.sent,
+    // WebSocket orqali xabar yuborish
+    if (_webSocketService?.isConnected == true) {
+      _webSocketService?.sendMessage(
+        receiverId: _recipientId!,
+        receiverType: _recipientRole!,
+        content: content,
+      );
+    } else {
+      // WebSocket ulanmagan bo'lsa, qayta ulanishga urinish
+      _connectWebSocket();
+      // Keyin xabarni yuborish
+      Future.delayed(const Duration(seconds: 1), () {
+        _webSocketService?.sendMessage(
+          receiverId: _recipientId!,
+          receiverType: _recipientRole!,
+          content: content,
         );
-      }
+      });
+    }
+  }
+
+  // Typing indikatori
+  void emitTyping() {
+    if (_recipientId == null || _recipientRole == null) return;
+
+    _typingStopTimer?.cancel();
+    _typingStopTimer = Timer(const Duration(seconds: 3), () {
+      _webSocketService?.sendTypingStatus(
+        partnerId: _recipientId!,
+        partnerType: _recipientRole!,
+        isTyping: false,
+      );
     });
 
-    // Simulate typing indicator
-    Future.delayed(const Duration(milliseconds: 800), () {
-      isPartnerTyping.value = true;
-    });
-
-    // Mock auto-reply
-    Future.delayed(const Duration(seconds: 2), () {
-      isPartnerTyping.value = false;
-      messages.add(SupportMessage(
-        id: 'msg-reply-${DateTime.now().millisecondsSinceEpoch}',
-        content: 'Rahmat! Xabaringiz qabul qilindi. Tez orada javob beramiz.',
-        isFromMe: false,
-        createdAt: DateTime.now(),
-      ));
-      _scrollToBottom(animate: true);
-    });
+    if (_typingTimer == null || !_typingTimer!.isActive) {
+      _webSocketService?.sendTypingStatus(
+        partnerId: _recipientId!,
+        partnerType: _recipientRole!,
+        isTyping: true,
+      );
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        _typingTimer = null;
+      });
+    }
   }
 
   void _scrollToBottom({bool animate = false}) {
@@ -125,6 +310,9 @@ class SupportController extends GetxController {
 
   @override
   void onClose() {
+    _typingTimer?.cancel();
+    _typingStopTimer?.cancel();
+    _webSocketService?.dispose();
     textController.dispose();
     scrollController.dispose();
     focusNode.dispose();
@@ -619,6 +807,7 @@ class SupportChatScreen extends GetWidget<SupportController> {
                 color: isDark ? Colors.white : Colors.black,
                 fontSize: 14.sp,
               ),
+              onChanged: (_) => controller.emitTyping(),
             ),
           ),
           SizedBox(width: 12.w),

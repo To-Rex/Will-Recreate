@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../app.dart';
 import '../../core/controllers/app_controller.dart';
+import '../../data/repositories/auth_repository.dart';
 
 // Phone formatting utilities
 bool validateUzPhone(String digits) {
@@ -52,7 +53,9 @@ class AuthController extends GetxController {
   final isLogin = false.obs;
   final userInfoValid = false.obs;
   final phoneValid = false.obs;
+  final errorMessage = Rx<String?>(null);
 
+  final _authRepository = AuthRepository();
   Timer? _timer;
 
   void setLoginMode(bool value) => isLogin.value = value;
@@ -79,27 +82,88 @@ class AuthController extends GetxController {
     );
   }
 
-  void submitPhone() {
+  /// OTP yuborish (register yoki login)
+  Future<void> submitPhone() async {
     if (!phoneValid.value) return;
-    Get.toNamed(
-      AppRoutes.otp,
-      arguments: {
-        'phone': '998$phoneDigits',
-        'is_login': isLogin.value,
-        'first_name': firstName.value.trim(),
-        'last_name': lastName.value.trim(),
+
+    isLoading.value = true;
+    errorMessage.value = null;
+
+    final phone = '998${phoneDigits.value}';
+
+    final result = isLogin.value
+        ? await _authRepository.login(phoneNumber: phone)
+        : await _authRepository.register(
+            phoneNumber: phone,
+            firstName: firstName.value.trim(),
+            lastName: lastName.value.trim(),
+          );
+
+    isLoading.value = false;
+
+    result.when(
+      success: (_) {
+        Get.toNamed(
+          AppRoutes.otp,
+          arguments: {
+            'phone': phone,
+            'is_login': isLogin.value,
+            'first_name': firstName.value.trim(),
+            'last_name': lastName.value.trim(),
+          },
+        );
+        startResendTimer();
       },
+      failure: (msg) => errorMessage.value = msg,
     );
   }
 
-  void verifyOtp() {
+  /// OTP tasdiqlash
+  Future<void> verifyOtp() async {
+    if (otpCode.value.length < 4) return;
+
     isLoading.value = true;
-    Future.delayed(const Duration(seconds: 1), () {
-      isLoading.value = false;
-      final appController = Get.find<AppController>();
-      appController.login();
-      Get.offAllNamed(AppRoutes.home);
-    });
+    errorMessage.value = null;
+
+    final args = Get.arguments as Map<String, dynamic>;
+    final phone = args['phone'] as String;
+    final isLoginMode = args['is_login'] as bool;
+
+    final result = await _authRepository.verifyOtp(
+      phoneNumber: phone,
+      otpCode: otpCode.value,
+      isLogin: isLoginMode,
+    );
+
+    isLoading.value = false;
+
+    result.when(
+      success: (verifyResponse) {
+        final appController = Get.find<AppController>();
+        appController.onLoginSuccess(verifyResponse);
+        Get.offAllNamed(AppRoutes.home);
+      },
+      failure: (msg) => errorMessage.value = msg,
+    );
+  }
+
+  /// OTP qayta yuborish
+  Future<void> resendOtp() async {
+    final args = Get.arguments as Map<String, dynamic>?;
+    if (args == null) return;
+
+    final phone = args['phone'] as String;
+    final isLoginMode = args['is_login'] as bool;
+
+    final result = await _authRepository.resendOtp(
+      phoneNumber: phone,
+      isLogin: isLoginMode,
+    );
+
+    result.when(
+      success: (_) => startResendTimer(),
+      failure: (msg) => errorMessage.value = msg,
+    );
   }
 
   void startResendTimer() {
