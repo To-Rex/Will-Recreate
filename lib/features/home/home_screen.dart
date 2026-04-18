@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/shimmer_loading.dart';
+import '../../core/extensions/num_extensions.dart';
 import '../../data/models/property_model.dart';
 import '../../app.dart';
 import 'home_controller.dart';
@@ -423,7 +423,7 @@ class _ListingItemCardState extends State<_ListingItemCard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${_formatPrice(property.price!)} so\'m / tun',
+                  property.price!.formatPrice,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
                 ),
                 Text('${property.commentCount} ${'comments_label'.tr}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
@@ -432,9 +432,5 @@ class _ListingItemCardState extends State<_ListingItemCard> {
         ],
       ),
     );
-  }
-
-  String _formatPrice(double price) {
-    return price.toInt().toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ' ');
   }
 }
