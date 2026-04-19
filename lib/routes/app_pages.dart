@@ -118,6 +118,7 @@ class AppPages {
     GetPage(
       name: AppRoutes.addCard,
       page: () => const AddCardScreen(),
+      binding: PaymentBinding(),
     ),
 
     // Settings
