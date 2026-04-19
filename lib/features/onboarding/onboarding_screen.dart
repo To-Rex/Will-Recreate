@@ -143,7 +143,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             ),
-            child: Text('create_account'.tr, style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Text('create_account'.tr, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(height: 12),

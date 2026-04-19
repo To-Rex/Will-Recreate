@@ -16,6 +16,7 @@ class AppRoutes {
   static const reviews = '/reviews';
   static const settings = '/settings';
   static const language = '/settings/language';
+  static const developer = '/settings/developer';
   static const paymentMethods = '/payment-methods';
   static const addCard = '/payment-methods/add-card';
   static const bookingCalendar = '/booking/calendar';

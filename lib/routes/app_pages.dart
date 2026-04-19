@@ -13,8 +13,10 @@ import '../features/listing/listing_detail_screen.dart';
 import '../features/booking/booking_screens.dart';
 import '../features/booking/booking_history_screen.dart';
 import '../features/favorites/favorites_screen.dart';
+import '../features/favorites/favorites_controller.dart';
 import '../features/payment/payment_screens.dart';
 import '../features/settings/settings_screens.dart';
+import '../features/settings/developer_screen.dart';
 import '../features/support/support_screen.dart';
 
 class AppPages {
@@ -130,6 +132,10 @@ class AppPages {
     GetPage(
       name: AppRoutes.language,
       page: () => const LanguageScreen(),
+    ),
+    GetPage(
+      name: AppRoutes.developer,
+      page: () => const DeveloperScreen(),
     ),
 
     // Support

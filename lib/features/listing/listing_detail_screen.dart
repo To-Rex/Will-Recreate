@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' as latlong;
-import '../../core/theme/app_colors.dart';
-import '../../data/models/property_model.dart';
-import '../../app.dart';
-import '../favorites/favorites_screen.dart';
-import 'widgets/full_screen_gallery.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/section_divider.dart';
+import '../../../core/utils/service_icon_mapper.dart';
+import '../../../data/models/property_model.dart';
+import '../favorites/favorites_controller.dart';
+import 'widgets/listing_image_carousel.dart';
+import 'widgets/listing_location_section.dart';
+import 'widgets/listing_bottom_bar.dart';
 import 'widgets/cancellation_rules_sheet.dart';
 
 String? _formatTime(String? time) {
@@ -28,7 +26,6 @@ class ListingDetailScreen extends StatefulWidget {
 }
 
 class _ListingDetailScreenState extends State<ListingDetailScreen> {
-  int _currentImageIndex = 0;
   bool _showFullDescription = false;
   bool _showAllAmenities = false;
   bool _showRules = false;
@@ -69,7 +66,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildImageCarousel(),
+                ListingImageCarousel(
+                  property: _property!,
+                  favoritesController: _favoritesController,
+                ),
                 Transform.translate(
                   offset: const Offset(0, -40),
                   child: ClipRRect(
@@ -85,49 +85,25 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         children: [
                           const SizedBox(height: 20),
                           _buildTitleSection(),
-                          Divider(
-                            height: 1,
-                            thickness: 0.5,
-                            color: Theme.of(context).dividerColor.withOpacity(0.1),
-                          ),
+                          const SectionDivider(),
                           if ((_property?.averageRating ?? 0.0) >= 2.0 ||
                               (_property?.commentCount ?? 0) > 0) ...[
                             _buildRatingSection(),
-                            Divider(
-                              height: 1,
-                              thickness: 0.5,
-                              color: Theme.of(context).dividerColor.withOpacity(0.1),
-                            ),
+                            const SectionDivider(),
                           ],
                           if (_property?.description != null &&
                               _property!.description!.isNotEmpty) ...[
                             _buildDescriptionSection(),
-                            Divider(
-                              height: 1,
-                              thickness: 0.5,
-                              color: Theme.of(context).dividerColor.withOpacity(0.1),
-                            ),
+                            const SectionDivider(),
                           ],
                           if (_property?.services.isNotEmpty ?? false) ...[
                             _buildAmenitiesSection(),
-                            Divider(
-                              height: 1,
-                              thickness: 0.5,
-                              color: Theme.of(context).dividerColor.withOpacity(0.1),
-                            ),
+                            const SectionDivider(),
                           ],
-                          _buildLocationSection(),
-                          Divider(
-                            height: 1,
-                            thickness: 0.5,
-                            color: Theme.of(context).dividerColor.withOpacity(0.1),
-                          ),
+                          ListingLocationSection(property: _property!),
+                          const SectionDivider(),
                           _buildLivingConditionsSection(),
-                          Divider(
-                            height: 1,
-                            thickness: 0.5,
-                            color: Theme.of(context).dividerColor.withOpacity(0.1),
-                          ),
+                          const SectionDivider(),
                           _buildCancellationRulesSection(),
                           const SizedBox(height: 120),
                         ],
@@ -138,236 +114,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               ],
             ),
           ),
-          _buildBottomBar(),
+          ListingBottomBar(property: _property!),
         ],
       ),
-    );
-  }
-
-  // ==================== Image Carousel ====================
-  Widget _buildImageCarousel() {
-    final images = _property?.images.map((e) => e.imageUrl).toList() ?? <String>[];
-
-    return Stack(
-      children: [
-        SizedBox(
-          height: 390,
-          width: double.infinity,
-          child: PageView.builder(
-            physics: const ClampingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            onPageChanged: (index) {
-              setState(() => _currentImageIndex = index);
-            },
-            itemCount: images.length,
-            itemBuilder: (context, index) {
-              return CachedNetworkImage(
-                imageUrl: images[index],
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: Colors.grey.shade200,
-                  child: Center(
-                    child: SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey.shade200,
-                  child: Center(
-                    child: Icon(
-                      Icons.image,
-                      size: 60.r,
-                      color: Colors.grey.shade400,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-
-        // Top gradient
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 200,
-          child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withOpacity(0.6), Colors.transparent],
-                  stops: const [0.29, 0.76],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Bottom gradient
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 200,
-          child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
-                  stops: const [0.29, 0.76],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Image counter
-        Positioned(
-          bottom: 60,
-          left: 0,
-          right: 0,
-          child: IgnorePointer(
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Text(
-                  '${_currentImageIndex + 1}/${images.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Fullscreen button
-        Positioned(
-          bottom: 60,
-          right: 30,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.fullscreen, color: Colors.white),
-              onPressed: () {
-                Navigator.of(context).push(
-                  PageRouteBuilder(
-                    opaque: false,
-                    barrierColor: Colors.black.withOpacity(0.5),
-                    pageBuilder: (context, _, __) => FullScreenGallery(
-                      images: images,
-                      initialIndex: _currentImageIndex,
-                    ),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      return child;
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-
-        // Top bar (back + favorite)
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(50),
-                      child: BackdropFilter(
-                        filter: ColorFilter.mode(
-                          Colors.white.withOpacity(0.1),
-                          BlendMode.overlay,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Get.back(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(50),
-                      child: BackdropFilter(
-                        filter: ColorFilter.mode(
-                          Colors.white.withOpacity(0.1),
-                          BlendMode.overlay,
-                        ),
-                        child: Obx(() {
-                          final isFav = _property != null &&
-                              _favoritesController.isFavorite(_property!.guid);
-                          return IconButton(
-                            icon: Icon(
-                              isFav ? Icons.favorite : Icons.favorite_border,
-                              color: isFav ? Colors.red : Colors.white,
-                            ),
-                            onPressed: () {
-                              if (_property != null) {
-                                _favoritesController.toggleFavorite(_property!);
-                              }
-                            },
-                          );
-                        }),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -533,32 +282,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             overflow: _showFullDescription ? TextOverflow.visible : TextOverflow.ellipsis,
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                setState(() => _showFullDescription = !_showFullDescription);
-              },
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 17),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                side: BorderSide.none,
-                backgroundColor: Theme.of(context).brightness == Brightness.light
-                    ? const Color(0xFFFAFAFA)
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-              child: Text(
-                _showFullDescription ? 'show_less'.tr : 'show_more'.tr,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  letterSpacing: -0.32,
-                ),
-              ),
-            ),
+          _buildToggleButton(
+            _showFullDescription ? 'show_less'.tr : 'show_more'.tr,
+            () => setState(() => _showFullDescription = !_showFullDescription),
           ),
         ],
       ),
@@ -593,236 +319,16 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             spacing: 8,
             runSpacing: 10,
             children: visibleServices.map((service) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? AppColors.darkBorder
-                        : const Color(0xFFE6E6E6),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                constraints: const BoxConstraints(minHeight: 40),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (service.iconUrl.isNotEmpty && service.iconUrl.endsWith('.svg'))
-                      SvgPicture.network(
-                        service.iconUrl,
-                        width: 20,
-                        height: 20,
-                        colorFilter: ColorFilter.mode(
-                          Theme.of(context).colorScheme.onSurface,
-                          BlendMode.srcIn,
-                        ),
-                        placeholderBuilder: (context) => const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    else
-                      Icon(
-                        _getIconForService(service.title),
-                        size: 20,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    const SizedBox(width: 6),
-                    Text(
-                      service.title,
-                      style: TextStyle(
-                        fontSize: 12,
-                        letterSpacing: -0.32,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              );
+              return _AmenityChip(service: service);
             }).toList(),
           ),
           if (allServices.length > 6) ...[
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  setState(() => _showAllAmenities = !_showAllAmenities);
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 17),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  side: BorderSide.none,
-                  backgroundColor: Theme.of(context).brightness == Brightness.light
-                      ? const Color(0xFFFAFAFA)
-                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                ),
-                child: Text(
-                  _showAllAmenities ? 'show_less'.tr : 'show_all'.tr,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    letterSpacing: -0.32,
-                  ),
-                ),
-              ),
+            _buildToggleButton(
+              _showAllAmenities ? 'show_less'.tr : 'show_all'.tr,
+              () => setState(() => _showAllAmenities = !_showAllAmenities),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  // ==================== Location Section ====================
-  Widget _buildLocationSection() {
-    final location = _property?.location;
-    final lat = double.tryParse(location?.latitude ?? '');
-    final lng = double.tryParse(location?.longitude ?? '');
-
-    if (lat == null || lng == null) {
-      // Show only address if no coordinates
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'location_on_object'.tr,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                letterSpacing: -0.6,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Icon(
-                    Icons.location_on_outlined,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    location?.fullAddress.isNotEmpty == true
-                        ? location!.fullAddress
-                        : _property?.displayLocation ?? '',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                      letterSpacing: -0.32,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    final point = latlong.LatLng(lat, lng);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'location_on_object'.tr,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              letterSpacing: -0.6,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 270,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(30)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: Stack(
-                children: [
-                  FlutterMap(
-                    options: MapOptions(
-                      initialCenter: point,
-                      initialZoom: 15,
-                      interactionOptions: const InteractionOptions(
-                        flags: InteractiveFlag.none,
-                      ),
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
-                        userAgentPackageName: 'uz.weel.weelbooking',
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: point,
-                            width: 80,
-                            height: 80,
-                            child: Icon(
-                              Icons.location_on,
-                              size: 40,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  location?.fullAddress.isNotEmpty == true
-                      ? location!.fullAddress
-                      : '${location?.city ?? ''}, ${location?.country ?? ''}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    letterSpacing: -0.32,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -875,61 +381,41 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
           ),
           if (_showRules) ...[
             const SizedBox(height: 20),
-            _buildConditionItem(
-              'age_restrictions'.tr,
-              'age_restriction_text'.tr,
+            _ConditionItem(
+              title: 'age_restrictions'.tr,
+              value: 'age_restriction_text'.tr,
             ),
-            Divider(
-              height: 1,
-              thickness: 0.5,
-              color: Theme.of(context).dividerColor.withOpacity(0.1),
+            const SectionDivider(),
+            _ConditionItem(
+              title: 'check_in_check_out_time'.tr,
+              value: '${'check_in_from'.trParams({'time': _formatTime(_property?.checkInTime) ?? '19:00'})}, '
+                  '${'check_out_until'.trParams({'time': _formatTime(_property?.checkOutTime) ?? '17:00'})}',
             ),
-            _buildConditionItem(
-              'check_in_check_out_time'.tr,
-              '${'check_in_from'.trParams({'time': _formatTime(_property?.checkInTime) ?? '19:00'})}, '
-              '${'check_out_until'.trParams({'time': _formatTime(_property?.checkOutTime) ?? '17:00'})}',
-            ),
-            Divider(
-              height: 1,
-              thickness: 0.5,
-              color: Theme.of(context).dividerColor.withOpacity(0.1),
-            ),
-            _buildConditionItem(
-              'quiet_hours'.tr,
-              _property?.isQuietHours == true
+            const SectionDivider(),
+            _ConditionItem(
+              title: 'quiet_hours'.tr,
+              value: _property?.isQuietHours == true
                   ? 'quiet_hours_range'.tr
                   : 'not_allowed'.tr,
             ),
-            Divider(
-              height: 1,
-              thickness: 0.5,
-              color: Theme.of(context).dividerColor.withOpacity(0.1),
-            ),
-            _buildConditionItem(
-              'alcohol'.tr,
-              _property?.isAllowedAlcohol == true
+            const SectionDivider(),
+            _ConditionItem(
+              title: 'alcohol'.tr,
+              value: _property?.isAllowedAlcohol == true
                   ? 'allowed'.tr
                   : 'not_allowed'.tr,
             ),
-            Divider(
-              height: 1,
-              thickness: 0.5,
-              color: Theme.of(context).dividerColor.withOpacity(0.1),
-            ),
-            _buildConditionItem(
-              'corporate_parties'.tr,
-              _property?.isAllowedCorporate == true
+            const SectionDivider(),
+            _ConditionItem(
+              title: 'corporate_parties'.tr,
+              value: _property?.isAllowedCorporate == true
                   ? 'allowed'.tr
                   : 'not_allowed'.tr,
             ),
-            Divider(
-              height: 1,
-              thickness: 0.5,
-              color: Theme.of(context).dividerColor.withOpacity(0.1),
-            ),
-            _buildConditionItem(
-              'pets'.tr,
-              _property?.isAllowedPets == true
+            const SectionDivider(),
+            _ConditionItem(
+              title: 'pets'.tr,
+              value: _property?.isAllowedPets == true
                   ? 'pets_allowed'.tr
                   : 'pets_not_allowed'.tr,
             ),
@@ -943,9 +429,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   Widget _buildCancellationRulesSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-      child: _buildConditionItem(
-        'cancellation_rules'.tr,
-        'view_cancellation_rules'.tr,
+      child: _ConditionItem(
+        title: 'cancellation_rules'.tr,
+        value: 'view_cancellation_rules'.tr,
         isLink: true,
         onTap: () {
           showModalBottomSheet(
@@ -959,126 +445,113 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     );
   }
 
-  // ==================== Bottom Bar ====================
-  Widget _buildBottomBar() {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? Colors.black.withOpacity(0.05)
-                  : Colors.black.withOpacity(0.3),
-              blurRadius: 42,
-              offset: const Offset(0, 2),
-            ),
-          ],
+  // ==================== Shared Toggle Button ====================
+  Widget _buildToggleButton(String text, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 17),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          side: BorderSide.none,
+          backgroundColor: Theme.of(context).brightness == Brightness.light
+              ? const Color(0xFFFAFAFA)
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
         ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(30, 20, 30, 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _property?.price != null
-                            ? 'price_per_night'.trParams({
-                                'price': NumberFormat(
-                                  '#,###',
-                                  Localizations.localeOf(context).toString(),
-                                ).format(_property!.price!.toInt()).replaceAll(',', ' '),
-                              })
-                            : 'price_not_specified'.tr,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.32,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'check_available_dates'.tr +
-                            ' ${DateFormat('d MMM', Localizations.localeOf(context).toString()).format(DateTime.now().add(const Duration(days: 1)))} - '
-                            '${DateFormat('d MMM', Localizations.localeOf(context).toString()).format(DateTime.now().add(const Duration(days: 7)))}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          letterSpacing: -0.32,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_property == null) return;
-                    Get.toNamed(
-                      AppRoutes.bookingCalendar,
-                      arguments: {'property': _property},
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 23.5, vertical: 17),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      side: const BorderSide(color: Color(0xFF9AFFC9), width: 1),
-                    ),
-                  ),
-                  child: Text(
-                    'book_now'.tr,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      letterSpacing: -0.32,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+            letterSpacing: -0.32,
           ),
         ),
       ),
     );
   }
+}
 
-  // ==================== Helper Methods ====================
-  IconData _getIconForService(String title) {
-    final lowerTitle = title.toLowerCase();
-    if (lowerTitle.contains('парковк') || lowerTitle.contains('avtoturargoh') || lowerTitle.contains('parking')) return Icons.local_parking;
-    if (lowerTitle.contains('бассейн') || lowerTitle.contains('basseyn') || lowerTitle.contains('pool')) return Icons.pool;
-    if (lowerTitle.contains('мангал') || lowerTitle.contains('mangal') || lowerTitle.contains('grill')) return Icons.local_fire_department;
-    if (lowerTitle.contains('кондиционер') || lowerTitle.contains('konditsioner') || lowerTitle.contains('ac')) return Icons.ac_unit;
-    if (lowerTitle.contains('саун') || lowerTitle.contains('бан') || lowerTitle.contains('sauna')) return Icons.hot_tub;
-    if (lowerTitle.contains('wifi') || lowerTitle.contains('wi-fi') || lowerTitle.contains('интернет')) return Icons.wifi;
-    if (lowerTitle.contains('кухн') || lowerTitle.contains('oshxona') || lowerTitle.contains('kitchen')) return Icons.kitchen;
-    if (lowerTitle.contains('телевизор') || lowerTitle.contains('tv')) return Icons.tv;
-    if (lowerTitle.contains('nonushta') || lowerTitle.contains('breakfast')) return Icons.free_breakfast;
-    return Icons.check_circle_outline;
+// ==================== Amenity Chip Widget ====================
+class _AmenityChip extends StatelessWidget {
+  final dynamic service;
+
+  const _AmenityChip({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkBorder
+              : const Color(0xFFE6E6E6),
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      constraints: const BoxConstraints(minHeight: 40),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (service.iconUrl.isNotEmpty && service.iconUrl.endsWith('.svg'))
+            SvgPicture.network(
+              service.iconUrl,
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(
+                Theme.of(context).colorScheme.onSurface,
+                BlendMode.srcIn,
+              ),
+              placeholderBuilder: (context) => const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            Icon(
+              getServiceIcon(service.title),
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          const SizedBox(width: 6),
+          Text(
+            service.title,
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: -0.32,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
+}
 
-  Widget _buildConditionItem(
-    String title,
-    String value, {
-    bool isLink = false,
-    VoidCallback? onTap,
-  }) {
+// ==================== Condition Item Widget ====================
+class _ConditionItem extends StatelessWidget {
+  final String title;
+  final String value;
+  final bool isLink;
+  final VoidCallback? onTap;
+
+  const _ConditionItem({
+    required this.title,
+    required this.value,
+    this.isLink = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -1112,4 +585,3 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     );
   }
 }
-

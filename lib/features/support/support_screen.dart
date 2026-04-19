@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../core/config/app_config.dart';
+import '../../core/services/base_url_service.dart';
 import '../../core/storage/secure_storage_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/repositories/support_repository.dart';
@@ -108,7 +108,7 @@ class SupportController extends GetxController {
     _webSocketService?.disconnect();
 
     _webSocketService = SupportWebSocketService(
-      baseUrl: AppConfig.wsUrl,
+      baseUrl: await BaseUrlService().getActiveWsUrl(),
     );
 
     _webSocketService!.onConnectionChange = (connected) {

@@ -1,11 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import '../config/app_config.dart';
+import '../services/base_url_service.dart';
+import 'api_log_interceptor.dart';
 import 'auth_interceptor.dart';
 
 /// Markaziy Dio instance - bitta nuqtadan boshqarish
 class DioClient {
   static Dio? _dio;
+  static String? _currentBaseUrl;
+  static final _baseUrlService = BaseUrlService();
   static final _logger = Logger(
     printer: PrettyPrinter(
       methodCount: 0,
@@ -18,11 +22,22 @@ class DioClient {
 
   /// Singleton Dio instance
   static Dio get dio {
-    if (_dio != null) return _dio!;
+    // Agar Dio mavjud bo'lsa va baseUrl o'zgarmagan bo'lsa, qaytarish
+    if (_dio != null && _currentBaseUrl != null) return _dio!;
 
-    _dio = Dio(
+    _currentBaseUrl = AppConfig.baseUrl;
+    _dio = _createDio(AppConfig.baseUrl);
+
+    // Saqlangan aktiv base URL'ni yuklash
+    _loadActiveBaseUrl();
+
+    return _dio!;
+  }
+
+  static Dio _createDio(String baseUrl) {
+    return Dio(
       BaseOptions(
-        baseUrl: AppConfig.baseUrl,
+        baseUrl: baseUrl,
         connectTimeout: AppConfig.connectTimeout,
         receiveTimeout: AppConfig.receiveTimeout,
         headers: {
@@ -30,20 +45,33 @@ class DioClient {
           'Accept': 'application/json',
         },
       ),
-    );
+    )..interceptors.addAll([
+        AuthInterceptor(),
+        ApiLogInterceptor(),
+        _LoggingInterceptor(),
+      ]);
+  }
 
-    // Interceptorlar
-    _dio!.interceptors.addAll([
-      AuthInterceptor(),
-      _LoggingInterceptor(),
-    ]);
+  /// Saqlangan base URL'ni yuklash va Dio'ni yangilash
+  static Future<void> _loadActiveBaseUrl() async {
+    final activeUrl = await _baseUrlService.getActiveBaseUrl();
+    if (activeUrl != AppConfig.baseUrl) {
+      updateBaseUrl(activeUrl);
+    }
+  }
 
-    return _dio!;
+  /// Base URL'ni dinamik o'zgartirish
+  static void updateBaseUrl(String newBaseUrl) {
+    if (_dio != null) {
+      _dio!.options.baseUrl = newBaseUrl;
+      _currentBaseUrl = newBaseUrl;
+    }
   }
 
   /// Test uchun Dio'ni reset qilish
   static void reset() {
     _dio = null;
+    _currentBaseUrl = null;
   }
 }
 

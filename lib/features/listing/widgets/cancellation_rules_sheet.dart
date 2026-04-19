@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../core/extensions/context_extensions.dart';
 
 class CancellationRulesSheet extends StatelessWidget {
   const CancellationRulesSheet({super.key});
@@ -9,7 +8,7 @@ class CancellationRulesSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
@@ -30,7 +29,7 @@ class CancellationRulesSheet extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: context.colors.onSurface,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 20),
@@ -55,7 +54,7 @@ class CancellationRulesSheet extends StatelessWidget {
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: context.colors.onSurface,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 6),
@@ -64,7 +63,7 @@ class CancellationRulesSheet extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             height: 1.5,
-            color: context.colors.onSurface.withOpacity(0.7),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
       ],
