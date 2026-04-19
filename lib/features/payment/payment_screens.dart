@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
@@ -464,8 +465,23 @@ class PaymentMethodsScreen extends GetView<PaymentController> {
 
 // ===================== Add Card Screen =====================
 
-class AddCardScreen extends StatelessWidget {
+class AddCardScreen extends StatefulWidget {
   const AddCardScreen({super.key});
+
+  @override
+  State<AddCardScreen> createState() => _AddCardScreenState();
+}
+
+class _AddCardScreenState extends State<AddCardScreen> {
+  final _cardNumberController = TextEditingController();
+  final _expiryDateController = TextEditingController();
+
+  @override
+  void dispose() {
+    _cardNumberController.dispose();
+    _expiryDateController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -509,7 +525,12 @@ class AddCardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextField(
+              controller: _cardNumberController,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                _CardNumberFormatter(),
+              ],
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -553,7 +574,12 @@ class AddCardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextField(
-              keyboardType: TextInputType.datetime,
+              controller: _expiryDateController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                _CardExpiryFormatter(),
+              ],
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -610,6 +636,56 @@ class AddCardScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Card number formatter: xxxx xxxx xxxx xxxx
+class _CardNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    // Limit to 16 digits
+    final trimmed = digits.substring(0, digits.length > 16 ? 16 : digits.length);
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < trimmed.length; i++) {
+      if (i > 0 && i % 4 == 0) buffer.write(' ');
+      buffer.write(trimmed[i]);
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+/// Card expiry date formatter: MM/yy
+class _CardExpiryFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    // Limit to 4 digits
+    final trimmed = digits.substring(0, digits.length > 4 ? 4 : digits.length);
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < trimmed.length; i++) {
+      if (i == 2) buffer.write('/');
+      buffer.write(trimmed[i]);
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

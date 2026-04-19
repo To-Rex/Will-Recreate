@@ -710,7 +710,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    _property?.displayLocation ?? '',
+                    location?.fullAddress.isNotEmpty == true
+                        ? location!.fullAddress
+                        : _property?.displayLocation ?? '',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey.shade600,
@@ -800,9 +802,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  location?.fullAddress != null && location!.fullAddress!.isNotEmpty
-                      ? location!.fullAddress!
-                      : _property?.displayLocation ?? '',
+                  location?.fullAddress.isNotEmpty == true
+                      ? location!.fullAddress
+                      : '${location?.city ?? ''}, ${location?.country ?? ''}',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade600,

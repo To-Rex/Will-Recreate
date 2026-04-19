@@ -29,7 +29,7 @@ class PropertyLocation {
   final String city;
   final String? region;
   final String? district;
-  final String? fullAddress;
+  final String? prefecture;
 
   PropertyLocation({
     required this.latitude,
@@ -38,8 +38,20 @@ class PropertyLocation {
     this.city = '',
     this.region,
     this.district,
-    this.fullAddress,
+    this.prefecture,
   });
+
+  /// Computed full address including prefecture, district, region, city, country
+  String get fullAddress {
+    final parts = <String>[
+      if (prefecture != null && prefecture!.isNotEmpty) prefecture!,
+      if (district != null && district!.isNotEmpty) district!,
+      if (region != null && region!.isNotEmpty) region!,
+      if (city.isNotEmpty) city,
+      if (country.isNotEmpty) country,
+    ];
+    return parts.join(', ');
+  }
 
   factory PropertyLocation.fromJson(Map<String, dynamic> json) {
     // property_location yoki to'g'ridan-to'g'ri maydonlardan parse
@@ -52,6 +64,7 @@ class PropertyLocation {
         city: safeString(locJson['city']),
         region: _extractTitle(locJson['region']),
         district: _extractTitle(locJson['district']),
+        prefecture: _extractTitle(locJson['prefecture']),
       );
     }
     return PropertyLocation(
@@ -61,6 +74,7 @@ class PropertyLocation {
       city: safeString(json['city']),
       region: _extractTitle(json['region']),
       district: _extractTitle(json['district']),
+      prefecture: _extractTitle(json['prefecture']),
     );
   }
 
@@ -81,6 +95,7 @@ class PropertyLocation {
     'city': city,
     'region': region,
     'district': district,
+    'prefecture': prefecture,
   };
 }
 
