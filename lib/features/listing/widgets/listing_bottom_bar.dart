@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import '../../../app.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/property_model.dart';
+import '../../booking/widgets/booking_calendar_sheet.dart';
 
 class ListingBottomBar extends StatelessWidget {
   final Property property;
@@ -77,9 +77,13 @@ class ListingBottomBar extends StatelessWidget {
                 const SizedBox(width: 20),
                 ElevatedButton(
                   onPressed: () {
-                    Get.toNamed(
-                      AppRoutes.bookingCalendar,
-                      arguments: {'property': property},
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => BookingCalendarSheet(
+                        property: property,
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(

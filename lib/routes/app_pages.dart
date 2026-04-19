@@ -11,6 +11,8 @@ import '../features/home/home_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/listing/listing_detail_screen.dart';
 import '../features/booking/booking_screens.dart';
+import '../features/booking/booking_flow_screen.dart';
+import '../features/booking/booking_controller.dart';
 import '../features/booking/booking_history_screen.dart';
 import '../features/favorites/favorites_screen.dart';
 import '../features/favorites/favorites_controller.dart';
@@ -89,6 +91,11 @@ class AppPages {
     GetPage(
       name: AppRoutes.bookingCalendar,
       page: () => const BookingCalendarScreen(),
+    ),
+    GetPage(
+      name: AppRoutes.bookingFlow,
+      page: () => const BookingFlowScreen(),
+      binding: BookingFlowBinding(),
     ),
     GetPage(
       name: AppRoutes.activeBookings,

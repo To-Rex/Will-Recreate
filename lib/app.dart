@@ -21,6 +21,7 @@ class AppRoutes {
   static const addCard = '/payment-methods/add-card';
   static const bookingCalendar = '/booking/calendar';
   static const bookingConfirmation = '/booking/confirmation';
+  static const bookingFlow = '/booking/flow';
   static const activeBookings = '/active-bookings';
   static const clientBookingDetail = '/client-booking-detail';
   static const history = '/history';

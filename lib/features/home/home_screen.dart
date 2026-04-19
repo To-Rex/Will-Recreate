@@ -271,16 +271,114 @@ class HomeScreen extends GetView<HomeController> {
     );
   }
 
+  Widget _buildStoriesShimmer() {
+    return SizedBox(
+      height: 100.h,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        itemCount: 5,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            child: SizedBox(
+              width: 70.r,
+              child: Column(
+                children: [
+                  AnimatedShimmerBox(
+                    width: 66.r,
+                    height: 66.r,
+                    borderRadius: 33.r,
+                  ),
+                  SizedBox(height: 4.h),
+                  AnimatedShimmerBox(
+                    width: 40.w,
+                    height: 10.h,
+                    borderRadius: 4.r,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildHomeShimmer() {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
           children: [
-            const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-            const SizedBox(height: 16),
+            _buildStoriesShimmer(),
+            const SizedBox(height: 8),
+            _buildSearchBarShimmer(),
+            _buildCategoryTabsShimmer(),
+            const SizedBox(height: 8),
             ...List.generate(3, (_) => _buildShimmerItem()),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBarShimmer() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          AnimatedShimmerBox(
+            width: 48,
+            height: 48,
+            borderRadius: 24.r,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: AnimatedShimmerBox(
+              height: 48,
+              borderRadius: 30.r,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryTabsShimmer() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 12.h),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        child: Row(
+          children: List.generate(5, (index) {
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedShimmerBox(
+                    width: 24.r,
+                    height: 24.r,
+                    borderRadius: 4.r,
+                  ),
+                  SizedBox(height: 4.h),
+                  AnimatedShimmerBox(
+                    width: 30.w,
+                    height: 10.h,
+                    borderRadius: 4.r,
+                  ),
+                  SizedBox(height: 4.h),
+                  AnimatedShimmerBox(
+                    width: 24.w,
+                    height: 2.h,
+                    borderRadius: 2.r,
+                  ),
+                ],
+              ),
+            );
+          }),
         ),
       ),
     );

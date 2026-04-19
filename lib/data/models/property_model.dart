@@ -250,6 +250,15 @@ class Property {
           return working > 0 ? working : null;
         }
       }
+      // Cottage list API da price maydoni bo'lmaydi,
+      // price_on_working_days alohida keladi
+      if (p == null) {
+        final workingDays = json['price_on_working_days'];
+        if (workingDays != null) {
+          final price = safeDouble(workingDays);
+          return price > 0 ? price : null;
+        }
+      }
       return null;
     }
 
