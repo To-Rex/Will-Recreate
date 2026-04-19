@@ -35,12 +35,25 @@ class FavoritesController extends GetxController {
     _isLoading.value = false;
   }
 
+  /// Sevimliga qo'shish yoki o'chirish (toggle)
+  Future<void> toggleFavorite(Property property) async {
+    final isFav = isFavorite(property.guid);
+    if (isFav) {
+      await _repository.removeFavorite(property.guid);
+      favorites.removeWhere((p) => p.guid == property.guid);
+    } else {
+      await _repository.saveFavorite(property);
+      favorites.add(property);
+    }
+  }
+
   /// Sevimlidan o'chirish
   Future<void> removeFavorite(String guid) async {
     await _repository.removeFavorite(guid);
     favorites.removeWhere((p) => p.guid == guid);
   }
 
+  /// Sevimlilarda ekanligini tekshirish
   bool isFavorite(String guid) {
     return favorites.any((p) => p.guid == guid);
   }
@@ -49,7 +62,11 @@ class FavoritesController extends GetxController {
 // Binding
 class FavoritesBinding extends Bindings {
   @override
-  void dependencies() => Get.lazyPut<FavoritesController>(() => FavoritesController());
+  void dependencies() {
+    if (!Get.isRegistered<FavoritesController>()) {
+      Get.put<FavoritesController>(FavoritesController(), permanent: true);
+    }
+  }
 }
 
 // Screen

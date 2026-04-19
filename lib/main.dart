@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'core/controllers/app_controller.dart';
 import 'core/theme/app_theme.dart';
+import 'features/favorites/favorites_screen.dart';
 import 'l10n/translations.dart';
 import 'routes/app_pages.dart';
 
@@ -53,5 +54,6 @@ class InitialBinding extends Bindings {
   @override
   void dependencies() {
     Get.put<AppController>(AppController(), permanent: true);
+    Get.put<FavoritesController>(FavoritesController(), permanent: true);
   }
 }

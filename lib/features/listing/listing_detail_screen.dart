@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart' as latlong;
 import '../../core/theme/app_colors.dart';
 import '../../data/models/property_model.dart';
 import '../../app.dart';
+import '../favorites/favorites_screen.dart';
 import 'widgets/full_screen_gallery.dart';
 import 'widgets/cancellation_rules_sheet.dart';
 
@@ -31,10 +32,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   bool _showFullDescription = false;
   bool _showAllAmenities = false;
   bool _showRules = false;
-  bool _isFavorite = false;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _rulesKey = GlobalKey();
   Property? _property;
+  final _favoritesController = Get.find<FavoritesController>();
 
   @override
   void initState() {
@@ -343,15 +344,21 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                           Colors.white.withOpacity(0.1),
                           BlendMode.overlay,
                         ),
-                        child: IconButton(
-                          icon: Icon(
-                            _isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: _isFavorite ? Colors.red : Colors.white,
-                          ),
-                          onPressed: () {
-                            setState(() => _isFavorite = !_isFavorite);
-                          },
-                        ),
+                        child: Obx(() {
+                          final isFav = _property != null &&
+                              _favoritesController.isFavorite(_property!.guid);
+                          return IconButton(
+                            icon: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              color: isFav ? Colors.red : Colors.white,
+                            ),
+                            onPressed: () {
+                              if (_property != null) {
+                                _favoritesController.toggleFavorite(_property!);
+                              }
+                            },
+                          );
+                        }),
                       ),
                     ),
                   ),
